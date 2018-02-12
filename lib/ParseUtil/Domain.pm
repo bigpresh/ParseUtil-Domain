@@ -26,7 +26,7 @@ sub parse_domain  {
     my @segments = split qr/[\.\x{FF0E}\x{3002}\x{FF61}]/, $name_segments[-1];
     ### executing with : $name
     my ( $zone, $zone_ace, $domain_segments ) =
-        @{ _find_zone( \@segments ) }{qw/zone zone_ace domain/};
+      @{ _find_zone( \@segments ) }{qw/zone zone_ace domain/};
 
     ### found zone : $zone
     ### found zone_ace : $zone_ace
