@@ -7,8 +7,6 @@ our @ISA = qw(Exporter);
 
 use Modern::Perl;
 use Carp;
-use autobox;
-use autobox::Core;
 use List::MoreUtils qw/any/;
 use Net::IDN::Encode ':all';
 use Net::IDN::Punycode ':all';
@@ -22,24 +20,24 @@ our %EXPORT_TAGS = (parse => [qw/parse_domain/], simple => [qw/puny_convert/]);
 sub parse_domain  {
     my $name = shift;
     ### testing : $name
-    my @name_segments = $name->split(qr{\Q@\E});
+    my @name_segments = split qr{\Q@\E}, $name;
     ### namesegments : \@name_segments
 
-    my @segments = $name_segments[-1]->split(qr/[\.\x{FF0E}\x{3002}\x{FF61}]/);
+    my @segments = split qr/[\.\x{FF0E}\x{3002}\x{FF61}]/, $name_segments[-1];
     ### executing with : $name
     my ( $zone, $zone_ace, $domain_segments ) =
-      _find_zone( \@segments )->slice(qw/zone zone_ace domain/);
+        @{ _find_zone( \@segments ) }{qw/zone zone_ace domain/};
 
     ### found zone : $zone
     ### found zone_ace : $zone_ace
 
     my $puny_processed = _punycode_segments( $domain_segments, $zone );
-    my ( $domain_name, $name_ace ) = $puny_processed->slice(qw/name name_ace/);
+    my ( $domain_name, $name_ace ) = $puny_processed->{qw/name name_ace/};
     ### puny processed : $puny_processed
     ### joining name slices : $domain_name
-    $puny_processed->{name} = [ $domain_name, $zone ]->join('.')
+    $puny_processed->{name} = join '.', $domain_name, $zone
       if $domain_name;
-    $puny_processed->{name_ace} = [ $name_ace, $zone_ace ]->join('.')
+    $puny_processed->{name_ace} = join '.', $name_ace, $zone_ace
       if $name_ace;
     @{$puny_processed}{qw/zone zone_ace/} = ( $zone, $zone_ace );
 
@@ -47,13 +45,12 @@ sub parse_domain  {
     if ( @name_segments > 1 ) {
         my $punycoded_name = _punycode_segments( [ $name_segments[0] ], $zone );
         my ( $domain, $domain_ace ) =
-          $punycoded_name->slice(qw/domain domain_ace/);
+          @$punycoded_name{qw/domain domain_ace/};
 
-        $puny_processed->{domain} =
-          [ $domain, $puny_processed->{domain} ]->join('@');
+        $puny_processed->{domain} = join '@', $domain, $puny_processed->{domain};
         if ($domain_ace) {
             $puny_processed->{domain_ace} =
-              [ $domain_ace, $puny_processed->{domain_ace} ]->join('@');
+              join '@', $domain_ace, $puny_processed->{domain_ace};
 
         }
     }
@@ -71,7 +68,7 @@ sub puny_convert {
         @keys = qw/domain_ace zone_ace/;
     }
     my $parsed        = parse_domain($domain);
-    my $parsed_domain = $parsed->slice(@keys)->join(".");
+    my $parsed_domain = join '.', @$parsed{@keys};
 
     return $parsed_domain;
 }
@@ -81,9 +78,9 @@ sub _find_zone {
 
     my $tld_regex = ParseUtil::Domain::ConfigData->tld_regex();
     ### Domain Segments: $domain_segments
-    my $tld  = $domain_segments->pop;
-    my $sld  = $domain_segments->pop;
-    my $thld = $domain_segments->pop;
+    my $tld  = pop @$domain_segments;
+    my $sld  = pop @$domain_segments;
+    my $thld = pop @$domain_segments;
 
     my ( $possible_tld, $possible_thld );
     my ( $sld_zone_ace, $tld_zone_ace ) =
@@ -152,8 +149,8 @@ sub _punycode_segments {
         croak "Undefined mapping!"
           if any { lc $_ ne nameprep( lc $_ ) } @{$puny_decoded};
 
-        my $domain     = $puny_decoded->join(".");
-        my $domain_ace = $puny_encoded->join(".");
+        my $domain     = join '.', @$puny_decoded;
+        my $domain_ace = join '.', @$puny_encoded;
 
         my $processed_name     = _process_name_part($puny_decoded);
         my $processed_name_ace = _process_name_part($puny_encoded);
@@ -172,8 +169,8 @@ sub _punycode_segments {
     my $puny_encoded =
       [ map { _puny_encode( lc $_ ) } @{$domain_segments} ];
     my $puny_decoded       = [ map { _puny_decode($_) } @{$puny_encoded} ];
-    my $domain             = $puny_decoded->join(".");
-    my $domain_ace         = $puny_encoded->join(".");
+    my $domain             = join '.', @$puny_decoded;
+    my $domain_ace         = join '.', @$puny_encoded;
     my $processed_name     = _process_name_part($puny_decoded);
     my $processed_name_ace = _process_name_part($puny_encoded);
     @{$processed_name_ace}{qw/name_ace prefix_ace/} =
@@ -190,8 +187,8 @@ sub _punycode_segments {
 sub _process_name_part {
     my $processed = shift;
     my @name_prefix;
-    my $name   = $processed->pop;
-    my $prefix = $processed->join(".");
+    my $name   = pop @$processed;
+    my $prefix = join '.', @$processed;
     push @name_prefix, name   => $name   if $name;
     push @name_prefix, prefix => $prefix if $prefix;
     return {@name_prefix};
