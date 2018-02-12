@@ -20,7 +20,7 @@ our %EXPORT_TAGS = (parse => [qw/parse_domain/], simple => [qw/puny_convert/]);
 sub parse_domain  {
     my $name = shift;
     ### testing : $name
-    my @name_segments = split qr{\Q@\E}, $name;
+    my @name_segments = split '@', $name;
     ### namesegments : \@name_segments
 
     my @segments = split qr/[\.\x{FF0E}\x{3002}\x{FF61}]/, $name_segments[-1];
